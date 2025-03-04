@@ -18,7 +18,9 @@ logging.basicConfig(level=logging.INFO)
 # Lista global de jogadores aguardando partida
 waiting_players = []
 
-async def register_player(websocket, player_id, game, ip, port):
+async def register_player(websocket, player_id, game, port):
+    # Obtém o IP real do cliente a partir do websocket
+    ip = websocket.remote_address[0]
     player = {
         "player_id": player_id,
         "game": game,
@@ -27,7 +29,7 @@ async def register_player(websocket, player_id, game, ip, port):
         "websocket": websocket
     }
     waiting_players.append(player)
-    logging.info(f"Jogador registrado: {player_id} para o jogo: {game}")
+    logging.info(f"Jogador registrado: {player_id} para o jogo: {game} com IP {ip}")
     await try_matchmaking()
 
 async def try_matchmaking():
@@ -60,13 +62,13 @@ async def handler(websocket, path):
             if action == "register":
                 player_id = data.get("player_id")
                 game = data.get("game")
-                ip = data.get("ip")
                 port = data.get("port")
                 
-                if player_id and game and ip and port:
-                    await register_player(websocket, player_id, game, ip, port)
+                if player_id and game and port:
+                    # Usa o IP real do cliente, ignorando o que foi enviado
+                    await register_player(websocket, player_id, game, port)
                 else:
-                    logging.error("Registro falhou: player_id, game, ip ou port faltando.")
+                    logging.error("Registro falhou: player_id, game ou port faltando.")
             else:
                 logging.warning(f"Ação desconhecida recebida: {action}")
     except websockets.exceptions.ConnectionClosed:
@@ -80,7 +82,9 @@ async def handler(websocket, path):
 
 async def main():
     port = int(os.getenv("PORT", 10000))
-    async with websockets.serve(handler, "0.0.0.0", port):
+    # Configura os parâmetros de ping para evitar timeouts:
+    # Envia pings a cada 10 segundos e espera até 30 segundos por uma resposta
+    async with websockets.serve(handler, "0.0.0.0", port, ping_interval=10, ping_timeout=30):
         logging.info(f"Servidor de matchmaking rodando em ws://0.0.0.0:{port}")
         await asyncio.Future()
 
