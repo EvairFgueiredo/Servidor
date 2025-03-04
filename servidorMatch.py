@@ -79,7 +79,7 @@ async def handler(websocket, path):
         ]
 
 async def main():
-    port = int(os.getenv("PORT", 8765))
+    port = int(os.getenv("PORT", 10000))
     async with websockets.serve(handler, "0.0.0.0", port):
         logging.info(f"Servidor de matchmaking rodando em ws://0.0.0.0:{port}")
         await asyncio.Future()
